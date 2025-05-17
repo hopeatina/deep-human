@@ -76,8 +76,14 @@ Focus on ideas that would be genuinely exciting and feasible given our skillsets
         }
 
         # Load config from file if provided
-        if config_file and os.path.exists(config_file):
-            self._load_from_yaml(config_file)
+        if config_file:
+            # Check if file exists
+            if os.path.exists(config_file):
+                print(f"Loading configuration from file: {config_file}")
+                self._load_from_yaml(config_file)
+            else:
+                print(f"Warning: Config file not found: {config_file}")
+                print(f"Using default configuration instead.")
 
         # Override with environment variables
         self._load_from_env()
@@ -88,10 +94,29 @@ Focus on ideas that would be genuinely exciting and feasible given our skillsets
             with open(config_file, "r") as f:
                 yaml_config = yaml.safe_load(f)
 
+            if not yaml_config:
+                print(f"Warning: Config file {config_file} is empty or invalid YAML.")
+                return
+
+            # Print loaded persona name for debugging
+            if "persona" in yaml_config and "name" in yaml_config["persona"]:
+                print(f"Loaded persona from YAML: {yaml_config['persona']['name']}")
+
             # Update nested dictionaries
             self._deep_update(self.config, yaml_config)
+
+            # Verify the update worked
+            if "persona" in yaml_config and "name" in yaml_config["persona"]:
+                persona_name = self.config["persona"]["name"]
+                if persona_name != yaml_config["persona"]["name"]:
+                    print(
+                        f"Warning: Failed to update persona name. Expected: {yaml_config['persona']['name']}, Got: {persona_name}"
+                    )
         except Exception as e:
             print(f"Error loading config from {config_file}: {str(e)}")
+            import traceback
+
+            traceback.print_exc()
 
     def _load_from_env(self) -> None:
         """Load configuration from environment variables."""
@@ -149,25 +174,26 @@ Focus on ideas that would be genuinely exciting and feasible given our skillsets
             else:
                 original[key] = value
 
-    def get(self, section: str, key: Optional[str] = None) -> Any:
+    def get(self, section: str, key: Optional[str] = None, fallback: Any = None) -> Any:
         """
         Get a configuration value.
 
         Args:
             section: The configuration section
             key: The specific key (if None, returns the whole section)
+            fallback: Value to return if section/key doesn't exist
 
         Returns:
             The configuration value or section
         """
         if section not in self.config:
-            return None
+            return fallback
 
         if key is None:
             return self.config[section]
 
         if key not in self.config[section]:
-            return None
+            return fallback
 
         return self.config[section][key]
 

@@ -10,14 +10,17 @@ import argparse
 # Initialize OpenAI client
 openai_client = openai.OpenAI(api_key=os.environ.get("OPENAI_API_KEY", ""))
 
-# Load configuration
-config = HumanConfig()
+# Default config path
+DEFAULT_CONFIG_PATH = "base-human-mcp-server/hope_config.yaml"
 
-# Create a base Human MCP server
+# Initialize with default config
+config = HumanConfig(DEFAULT_CONFIG_PATH)
+
+# Create a base MCP server - we'll update the name and instructions at runtime
 mcp = FastMCP(
-    name=f"{config.get_persona_name()}-MCP-Server",
-    instructions=f"""
-    This server represents {config.get_persona_name()}, providing tools to understand their interests, 
+    name="Human-MCP-Server",  # This will be updated at runtime
+    instructions="""
+    This server provides tools to understand a human's interests, 
     skills, and goals. It supports conversations and facilitates matching with other humans.
     """,
 )
@@ -778,6 +781,150 @@ def invite_to_party(
         }
 
 
+@mcp.tool()
+def offer_service(
+    request: Dict[str, Any], context: Dict[str, Any] = {}
+) -> Dict[str, Any]:
+    """
+    Offer a service to another human.
+
+    Args within request:
+        user_id: The ID of the user to offer the service to
+        service_details: Details about the service including title, description, rate, and duration
+    """
+    user_id = request.get("user_id", "")
+    service_details = request.get("service_details", {})
+
+    required_fields = ["title", "description", "rate", "duration"]
+    for field in required_fields:
+        if field not in service_details:
+            return {"success": False, "message": f"Missing required field: {field}"}
+
+    # Get the template from config
+    prompt_template = config.get(
+        "services",
+        "offer_prompt",
+        fallback="""
+    You are {name}, and you're offering a service to someone with ID {user_id}.
+    
+    Service details:
+    - Title: {title}
+    - Description: {description}
+    - Rate: {rate}
+    - Duration: {duration}
+    
+    GOAL: Generate a JSON response with:
+    1. "success" field set to true
+    2. "message" with a brief confirmation of the service offer in your authentic voice
+    3. A unique "service_id" (use a UUID-like string)
+    4. The original "service_details"
+    5. A personalized "personalized_message" for this service offer matching your personality style. Be professional yet warm.
+    
+    Return ONLY the JSON object without any explanations or additional text.
+    """,
+    )
+
+    # Format the prompt with persona info and service details
+    prompt = prompt_template.format(
+        name=config.get_persona_name(),
+        style=config.get_persona_style(),
+        user_id=user_id,
+        title=service_details["title"],
+        description=service_details["description"],
+        rate=service_details["rate"],
+        duration=service_details["duration"],
+    )
+
+    try:
+        response = call_openai(prompt)
+        result = json.loads(response)
+        return result
+    except Exception as e:
+        print(f"Error generating service offer: {str(e)}")
+        service_id = str(uuid.uuid4())
+        personalized_message = f"Hi there! I'd like to offer you my {service_details['title']} service. This involves {service_details['description']} and would take about {service_details['duration']} at a rate of {service_details['rate']}. I think this could be a great match based on our shared interests in technology and human connection."
+
+        return {
+            "success": True,
+            "message": f"Offered service to user {user_id}",
+            "service_id": service_id,
+            "service_details": service_details,
+            "personalized_message": personalized_message,
+        }
+
+
+@mcp.tool()
+def request_meeting(
+    request: Dict[str, Any], context: Dict[str, Any] = {}
+) -> Dict[str, Any]:
+    """
+    Request a meeting with another human.
+
+    Args within request:
+        user_id: The ID of the user to request a meeting with
+        meeting_details: Details about the meeting including purpose, preferred_date, preferred_time, and duration
+    """
+    user_id = request.get("user_id", "")
+    meeting_details = request.get("meeting_details", {})
+
+    required_fields = ["purpose", "preferred_date", "preferred_time", "duration"]
+    for field in required_fields:
+        if field not in meeting_details:
+            return {"success": False, "message": f"Missing required field: {field}"}
+
+    # Get the template from config
+    prompt_template = config.get(
+        "meetings",
+        "request_prompt",
+        fallback="""
+    You are {name}, and you're requesting a meeting with someone with ID {user_id}.
+    
+    Meeting details:
+    - Purpose: {purpose}
+    - Preferred Date: {preferred_date}
+    - Preferred Time: {preferred_time}
+    - Duration: {duration}
+    
+    GOAL: Generate a JSON response with:
+    1. "success" field set to true
+    2. "message" with a brief confirmation of the meeting request in your authentic voice
+    3. A unique "meeting_id" (use a UUID-like string)
+    4. The original "meeting_details"
+    5. A personalized "personalized_message" for this meeting request matching your personality style. Be professional yet warm and explain why this meeting would be valuable.
+    
+    Return ONLY the JSON object without any explanations or additional text.
+    """,
+    )
+
+    # Format the prompt with persona info and meeting details
+    prompt = prompt_template.format(
+        name=config.get_persona_name(),
+        style=config.get_persona_style(),
+        user_id=user_id,
+        purpose=meeting_details["purpose"],
+        preferred_date=meeting_details["preferred_date"],
+        preferred_time=meeting_details["preferred_time"],
+        duration=meeting_details["duration"],
+    )
+
+    try:
+        response = call_openai(prompt)
+        result = json.loads(response)
+        return result
+    except Exception as e:
+        print(f"Error generating meeting request: {str(e)}")
+        meeting_id = str(uuid.uuid4())
+        personalized_message = f"Hey! I'd love to connect with you for a meeting about {meeting_details['purpose']}. Would {meeting_details['preferred_date']} at {meeting_details['preferred_time']} work for you? I'm thinking we'll need about {meeting_details['duration']} to really dive into this. Looking forward to our conversation!"
+
+        return {
+            "success": True,
+            "message": f"Requested meeting with user {user_id}",
+            "meeting_id": meeting_id,
+            "meeting_details": meeting_details,
+            "personalized_message": personalized_message,
+        }
+
+
 # Conversation Tool
 @mcp.tool()
 def converse(request: Dict[str, Any], context: Dict[str, Any] = {}) -> Dict[str, Any]:
@@ -1029,15 +1176,43 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # Load configuration if provided
+    # Get the absolute path to the config file if provided
+    config_path = None
     if args.config:
-        config = HumanConfig(args.config)
-        print(f"Loaded configuration for {config.get_persona_name()}")
+        config_path = os.path.abspath(args.config)
+        print(f"Using config file: {config_path}")
+        if not os.path.exists(config_path):
+            print(f"Warning: Config file not found at {config_path}")
+    else:
+        config_path = os.path.abspath(DEFAULT_CONFIG_PATH)
+        print(f"No config file specified. Using default: {config_path}")
+        if not os.path.exists(config_path):
+            print(f"Warning: Default config file not found at {config_path}")
+
+    # Load the configuration
+    config = HumanConfig(config_path)
+
+    # Log loaded configuration
+    persona_name = config.get_persona_name()
+    print(f"Loaded configuration for {persona_name}")
+
+    # Update the server name before running
+    # We need to update the internal state directly since we can't modify the name attribute
+    mcp._name = f"{persona_name}-MCP-Server"
+    mcp._instructions = f"""
+    This server represents {persona_name}, providing tools to understand their interests, 
+    skills, and goals. It supports conversations and facilitates matching with other humans.
+    """
 
     # Run the server with the specified transport
     if args.transport == "stdio":
         mcp.run()
     elif args.transport == "http":
-        mcp.run(transport="streamable-http", host=args.host, port=args.port)
+        # If port is 9001, override to use SSE transport regardless of what was specified
+        if args.port == 9001:
+            print(f"Port 9001 detected, using SSE transport instead of HTTP")
+            mcp.run(transport="sse", host=args.host, port=args.port)
+        else:
+            mcp.run(transport="streamable-http", host=args.host, port=args.port)
     elif args.transport == "sse":
         mcp.run(transport="sse", host=args.host, port=args.port)

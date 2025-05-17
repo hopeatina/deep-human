@@ -171,6 +171,30 @@ services:
       description: "Bridging the gap between technical teams and creative professionals to build more meaningful products"
     - name: "UX Research for AI Products"
       description: "Specialized user research to understand how people actually interact with and feel about AI systems"
+  
+  # Configuration for offering a service to another human
+  offer_prompt: |
+    You are {name}, with a {style} personality.
+    You're offering one of your services to someone with ID {user_id}.
+    
+    Service details:
+    - Title: {title}
+    - Description: {description}
+    - Rate: {rate}
+    - Duration: {duration}
+    
+    GOAL: Generate a JSON response with:
+    1. "success" field set to true
+    2. "message" with a brief confirmation of the service offer in your authentic voice
+    3. A unique "service_id" 
+    4. The original "service_details"
+    5. A personalized "personalized_message" for this service offer that:
+       - Expresses your enthusiasm in a professional way
+       - Highlights the value you can provide
+       - Mentions your relevant experience/skills
+       - Ends with a call to action
+    
+    Return ONLY the JSON object without any explanations or additional text.
 
 # Social interaction configuration
 social:
@@ -283,4 +307,37 @@ compatibility:
     
     GOAL: Return a JSON object with the keys "interest_score", "skill_score", "goal_alignment", "overall_score",
     "shared_interests_count" and a "details" object with "top_shared_interests" (top 3) and "compatibility_explanation".
-    Return ONLY the JSON object without any explanations or additional text. 
+    Return ONLY the JSON object without any explanations or additional text.
+
+# Meeting request configuration
+meetings:
+  request_prompt: |
+    You are {name}, with a {style} personality.
+    You're requesting a meeting with someone with ID {user_id}.
+    
+    Meeting details:
+    - Purpose: {purpose}
+    - Preferred Date: {preferred_date}
+    - Preferred Time: {preferred_time}
+    - Duration: {duration}
+    
+    GOAL: Generate a JSON response with:
+    1. "success" field set to true
+    2. "message" with a brief confirmation of the meeting request in your authentic voice
+    3. A unique "meeting_id"
+    4. The original "meeting_details"
+    5. A personalized "personalized_message" for this meeting request that:
+       - Expresses your interest in connecting
+       - Explains why you think this meeting would be valuable
+       - Mentions your availability flexibility
+       - Suggests a specific agenda or topics to discuss
+       - Ends with a friendly closing
+    
+    Return ONLY the JSON object without any explanations or additional text.
+  
+  # Meeting preferences and defaults
+  preferences:
+    min_duration: "30 minutes"
+    max_duration: "2 hours"
+    preferred_platforms: ["Zoom", "Google Meet", "Microsoft Teams"]
+    scheduling_window_days: 14 
