@@ -1,0 +1,27 @@
+[
+  {
+    "name": "Python Programming",
+    "level": 0.9,
+    "details": "Expert-level Python with focus on data science, AI, and web backends"
+  },
+  {
+    "name": "Machine Learning",
+    "level": 0.85,
+    "details": "Experience with TensorFlow, PyTorch, and scikit-learn for various ML applications"
+  },
+  {
+    "name": "UX/UI Design",
+    "level": 0.7,
+    "details": "Creating intuitive and accessible interfaces with a human-centered approach"
+  },
+  {
+    "name": "Project Management",
+    "level": 0.8,
+    "details": "Leading cross-functional teams with agile methodologies"
+  },
+  {
+    "name": "Technical Writing",
+    "level": 0.85,
+    "details": "Documenting complex technical concepts in clear, accessible language"
+  }
+]

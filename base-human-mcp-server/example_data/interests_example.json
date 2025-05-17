@@ -1,0 +1,27 @@
+[
+  {
+    "name": "Artificial Intelligence",
+    "score": 0.9,
+    "details": "Specializing in natural language processing and generative models"
+  },
+  {
+    "name": "Human-Computer Interaction",
+    "score": 0.85,
+    "details": "Creating intuitive interfaces that enhance the human experience"
+  },
+  {
+    "name": "Music",
+    "score": 0.7,
+    "details": "Playing piano and composing electronic music"
+  },
+  {
+    "name": "Hiking",
+    "score": 0.65,
+    "details": "Exploring nature trails and mountains on weekends"
+  },
+  {
+    "name": "Science Fiction",
+    "score": 0.8,
+    "details": "Reading and discussing speculative fiction about technology and society"
+  }
+]

@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Data files
+data/
+*.json
+!example_data/*.json
+
+# Environment variables
+.env
+.env.local
+*.env
+
+# Logs
+logs/
+*.log
+
+# OS specific
+.DS_Store
+
+# API Keys and secrets
+.openai_key
+config.local.yaml
+*_key.json
+secrets/
+
+# Generated files
+conversations/
+invites/
+close_friends/
+
+# Testing
+.coverage
+htmlcov/ 
