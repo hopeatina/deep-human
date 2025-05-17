@@ -13,9 +13,16 @@ Deep Research for Meeting Prep
    
 2.Architecture 
 
-
+User - > Website  -> Connect -> Typescript Calls MCP Method  [Local Mcp Client ]
 
 2. Tasks
+
+
+1. Frontend -> Hope
+2. Agent 1 + 2 -> Tomasz
+3. Prepare Test Data -> Sung
+
+
 
 
 
