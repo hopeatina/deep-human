@@ -1,4 +1,4 @@
-# deep-calendar
+# deep-human
 Deep Research for Meeting Prep
 
 1. UX
