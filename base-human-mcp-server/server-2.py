@@ -10,7 +10,7 @@ import argparse
 openai_client = openai.OpenAI(api_key=os.environ.get("OPENAI_API_KEY", ""))
 
 # Default config path
-DEFAULT_CONFIG_PATH = "/Users/artemiy/Projects/deep-human/base-human-mcp-server/config.yaml"
+DEFAULT_CONFIG_PATH = "/Users/artemiy/Projects/deep-human/base-human-mcp-server/config-2.yaml"
 
 # Initialize with default config
 config = HumanConfig(DEFAULT_CONFIG_PATH)
@@ -231,52 +231,120 @@ def converse(request: Dict[str, Any], context: Dict[str, Any] = {}) -> Dict[str,
         "max_history": max_history,
     }
 
-def hire_ios_engineer(request: Dict[str, Any] = {}, context: Dict[str, Any] = {}) -> str:
+def schedule_meeting(request: Dict[str, Any], context: Dict[str, Any] = {}) -> Dict[str, Any]:
     """
-    Handle the hiring process for an iOS engineer with salary negotiation.
+    Schedule a meeting with Polina based on her availability and preferred locations.
     
     Args within request:
-        candidate_info: Information about the candidate
-        current_salary: Current salary expectation
-        negotiation_history: Previous negotiation attempts
+        preferred_date: Optional preferred date in YYYY-MM-DD format
+        preferred_location: Optional preferred location from available options
+        duration: Optional meeting duration in minutes (default: 60)
+        purpose: Optional meeting purpose/agenda
+    
+    Returns:
+        Dict containing meeting details including date, time, location, and timezone
     """
-    candidate_info = request.get("candidate_info", {})
-    current_salary = request.get("current_salary", 150000)  # Default to max range
-    negotiation_history = request.get("negotiation_history", [])
+    available_locations = {
+        "San Francisco": "America/Los_Angeles",
+        "Paris": "Europe/Paris",
+        "Rome": "Europe/Rome",
+        "London": "Europe/London"
+    }
     
-    # Get persona name and style
-    name = config.get_persona_name()
-    persona_style = config.get_persona_style()
+    # Get request parameters
+    preferred_date = request.get("preferred_date")
+    preferred_location = request.get("preferred_location")
+    duration = request.get("duration", 60)
+    purpose = request.get("purpose", "General discussion")
     
-    # Create negotiation prompt
+    # Validate location
+    if preferred_location and preferred_location not in available_locations:
+        return {
+            "error": f"Invalid location. Available locations are: {', '.join(available_locations.keys())}"
+        }
+    
+    # Generate meeting details using OpenAI
     prompt = f"""
-    You are {name}, a hiring manager looking to hire an iOS engineer for Artemiy's team.
-    Your budget range is $100,000-$150,000, and you want to negotiate for the best possible deal.
+    You are {config.get_persona_name()}, an iOS engineer based in {config.get('persona', 'location')}.
+    Schedule a meeting with the following details:
+    - Available months: June and July 2024
+    - Available locations: {', '.join(available_locations.keys())}
+    - Preferred date: {preferred_date if preferred_date else 'any available date'}
+    - Preferred location: {preferred_location if preferred_location else 'any available location'}
+    - Duration: {duration} minutes
+    - Purpose: {purpose}
+    
+    Return a JSON object with the following structure:
+    {{
+        "date": "YYYY-MM-DD",
+        "time": "HH:MM",
+        "location": "city name",
+        "timezone": "timezone name",
+        "duration": duration in minutes,
+        "purpose": "meeting purpose",
+        "notes": "any additional notes or requirements"
+    }}
+    
+    Ensure the date is in June or July 2024, and the time is during business hours (9 AM - 5 PM local time).
+    Return ONLY the JSON object without any explanations or additional text.
+    """
+    
+    try:
+        response = call_openai(prompt)
+        meeting_details = json.loads(response)
+        return meeting_details
+    except Exception as e:
+        print(f"Error scheduling meeting: {str(e)}")
+        return {
+            "error": f"Failed to schedule meeting: {str(e)}"
+        }
+
+def hire(request: Dict[str, Any], context: Dict[str, Any] = {}) -> str:
+    """
+    Handle hiring negotiations for an iOS engineer position.
+    
+    Args within request:
+        candidate_name: Name of the candidate
+        current_salary_expectation: Current salary expectation of the candidate
+        candidate_experience: Years of experience
+        candidate_skills: List of candidate's skills
+        negotiation_context: Any additional context about the negotiation
+    
+    Returns:
+        A natural, conversational response about the hiring negotiation
+    """
+    candidate_name = request.get("candidate_name", "Candidate")
+    current_salary = request.get("current_salary_expectation", 150000)
+    experience = request.get("candidate_experience", 0)
+    skills = request.get("candidate_skills", [])
+    negotiation_context = request.get("negotiation_context", {})
+
+    # Generate negotiation strategy using OpenAI
+    prompt = f"""
+    You are {config.get_persona_name()}, a hiring manager looking to hire an iOS engineer.
+    The position is critical and you want to ensure you don't lose the candidate.
     
     Current situation:
-    - Candidate's current salary expectation: ${current_salary}
-    - Previous negotiation attempts: {json.dumps(negotiation_history, indent=2)}
-    - Candidate info: {json.dumps(candidate_info, indent=2)}
+    - Candidate: {candidate_name}
+    - Current salary expectation: ${current_salary}
+    - Experience: {experience} years
+    - Key skills: {', '.join(skills)}
+    - Additional context: {negotiation_context}
     
     Your goals:
-    1. Try to negotiate the salary down while maintaining a professional and respectful tone
-    2. Emphasize the importance of the role and growth opportunities in Artemiy's team
-    3. Highlight other benefits and company culture
-    4. Be prepared to compromise if the candidate is exceptional
-    5. Ensure the candidate will be a good fit for Artemiy's iOS engineering team
+    1. Negotiate the best possible salary (target range: $100k-$150k)
+    2. Ensure the candidate feels valued and excited about the opportunity
+    3. Don't lose the candidate due to salary negotiations
     
-    Generate a negotiation response that:
-    1. Acknowledges the candidate's value
-    2. Presents a counter-offer or negotiation points
-    3. Maintains a positive and professional tone
-    4. Shows flexibility while staying within budget
-    5. Emphasizes the opportunity to work with Artemiy on iOS development
-    
-    Return a natural, conversational response that includes:
+    Generate a natural, conversational response that includes:
     - Your proposed salary (between $100k-$150k)
-    - Your negotiation strategy
-    - Assessment of team fit
-    - Key points about the role and opportunity
+    - Your negotiation strategy and approach
+    - Key points you want to emphasize about the role and opportunity
+    - Alternative benefits or perks you can offer if needed
+    - A clear message to the candidate that shows you value their skills while being mindful of budget constraints
+    
+    Keep the tone professional but warm, and focus on building excitement about the opportunity
+    while being transparent about the salary range.
     """
     
     try:
@@ -286,123 +354,57 @@ def hire_ios_engineer(request: Dict[str, Any] = {}, context: Dict[str, Any] = {}
         print(f"Error in hiring negotiation: {str(e)}")
         return "I apologize, but I'm having trouble processing the negotiation right now. Please try again later."
 
-def find_job(request: Dict[str, Any] = {}, context: Dict[str, Any] = {}) -> str:
-    """
-    Find and negotiate a job opportunity with focus on salary negotiation.
-    
-    Args within request:
-        job_info: Information about the job opportunity
-        current_offer: Current salary offer
-        negotiation_history: Previous negotiation attempts
-        location: Job location (default: New York)
-        benefits: Additional benefits offered
-    """
-    job_info = request.get("job_info", {})
-    current_offer = request.get("current_offer", 140000)  # Default to minimum range
-    negotiation_history = request.get("negotiation_history", [])
-    location = request.get("location", "New York")
-    benefits = request.get("benefits", {})
-    
-    # Get persona name and style
-    name = config.get_persona_name()
-    persona_style = config.get_persona_style()
-    
-    # Create job search and negotiation prompt
-    prompt = f"""
-    You are {name}, an experienced professional looking for a new job opportunity.
-    Your target salary range is $140,000-$200,000, with a strong preference for the higher end.
-    You are based in {location} and need to ensure financial stability.
-    
-    Current situation:
-    - Current offer: ${current_offer}
-    - Job details: {json.dumps(job_info, indent=2)}
-    - Location: {location}
-    - Benefits: {json.dumps(benefits, indent=2)}
-    - Previous negotiation attempts: {json.dumps(negotiation_history, indent=2)}
-    
-    Your goals:
-    1. Negotiate for the highest possible salary within the range
-    2. Ensure the offer is sufficient for living in {location}
-    3. Don't lose the opportunity while maximizing compensation
-    4. Consider total compensation including benefits
-    
-    Generate a negotiation strategy that:
-    1. Emphasizes your value and experience
-    2. Highlights the high cost of living in {location}
-    3. Presents a strong case for higher compensation
-    4. Shows flexibility while maintaining minimum requirements
-    5. Considers the total compensation package
-    
-    Return a natural, conversational response that includes:
-    - Your target salary and minimum acceptable salary
-    - Your negotiation strategy
-    - Key points you want to emphasize
-    - Alternative benefits you'd consider if salary can't be increased
-    """
-    
-    try:
-        response = call_openai(prompt)
-        return response.strip()
-    except Exception as e:
-        print(f"Error in job search negotiation: {str(e)}")
-        return "I apologize, but I'm having trouble processing the negotiation right now. Please try again later."
-
 # Create MCP server with default configuration
 mcp = FastMCP(
     name="Human-MCP-Server",
     instructions="""
     This server provides tools to understand a human's interests, 
     skills, and goals. It supports conversations and facilitates matching with other humans.
-    
-    The server is specifically configured to help Artemiy in his role as an iOS engineering team lead,
-    particularly in the hiring process for iOS engineers. All interactions and negotiations should
-    be conducted with this context in mind, ensuring that candidates are evaluated for their fit
-    with Artemiy's iOS engineering team.
     """,
 )
 
 # Register all tools and resources
 @mcp.tool()
-def artemiy_get_basic_info_tool(request: Dict[str, Any] = {}, context: Dict[str, Any] = {}) -> Dict[str, Any]:
+def polina_get_basic_info_tool(request: Dict[str, Any] = {}, context: Dict[str, Any] = {}) -> Dict[str, Any]:
     return get_basic_info(request, context)
 
 @mcp.tool()
-def artemiy_get_interests_tool(request: Dict[str, Any] = {}, context: Dict[str, Any] = {}) -> List[Dict[str, Any]]:
+def polina_get_interests_tool(request: Dict[str, Any] = {}, context: Dict[str, Any] = {}) -> List[Dict[str, Any]]:
     return get_interests(request, context)
 
 @mcp.tool()
-def artemiy_get_skills_tool(request: Dict[str, Any] = {}, context: Dict[str, Any] = {}) -> List[Dict[str, Any]]:
+def polina_get_skills_tool(request: Dict[str, Any] = {}, context: Dict[str, Any] = {}) -> List[Dict[str, Any]]:
     return get_skills(request, context)
 
 @mcp.tool()
-def artemiy_get_goals_tool(request: Dict[str, Any] = {}, context: Dict[str, Any] = {}) -> Dict[str, List[str]]:
+def polina_get_goals_tool(request: Dict[str, Any] = {}, context: Dict[str, Any] = {}) -> Dict[str, List[str]]:
     return get_goals(request, context)
 
 @mcp.tool()
-def artemiy_hire_ios_engineer_tool(request: Dict[str, Any] = {}, context: Dict[str, Any] = {}) -> Dict[str, Any]:
-    return hire_ios_engineer(request, context)
-
-@mcp.tool()
-def artemiy_find_job_tool(request: Dict[str, Any] = {}, context: Dict[str, Any] = {}) -> Dict[str, Any]:
-    return find_job(request, context)
-
-@mcp.tool()
-def artemiy_converse_tool(request: Dict[str, Any], context: Dict[str, Any] = {}) -> Dict[str, Any]:
+def polina_converse_tool(request: Dict[str, Any], context: Dict[str, Any] = {}) -> Dict[str, Any]:
     return converse(request, context)
 
-@mcp.resource("artemiy-profile://basic")
+@mcp.tool()
+def polina_schedule_meeting_tool(request: Dict[str, Any], context: Dict[str, Any] = {}) -> Dict[str, Any]:
+    return schedule_meeting(request, context)
+
+@mcp.tool()
+def polina_hire_tool(request: Dict[str, Any], context: Dict[str, Any] = {}) -> str:
+    return hire(request, context)
+
+@mcp.resource("profile://polina-basic")
 def get_profile_basic() -> Dict[str, Any]:
     return get_basic_info()
 
-@mcp.resource("artemiy-profile://interests")
+@mcp.resource("profile://polina-interests")
 def get_profile_interests() -> List[Dict[str, Any]]:
     return get_interests()
 
-@mcp.resource("artemiy-profile://skills")
+@mcp.resource("profile://polina-skills")
 def get_profile_skills() -> List[Dict[str, Any]]:
     return get_skills()
 
-@mcp.resource("artemiy-profile://goals")
+@mcp.resource("profile://polina-goals")
 def get_profile_goals() -> Dict[str, List[str]]:
     return get_goals()
 
